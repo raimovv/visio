@@ -96,3 +96,5 @@ Visio follows a standard Electron split:
 ## Known Release Notes
 - The app is currently unsigned.
 - A dedicated branded Windows `.ico` has not been added yet, so packaging still uses the default Electron application icon.
+
+### _WARNING: This app is fully vibe-coded. Launch at your own risk. Thank you!_
