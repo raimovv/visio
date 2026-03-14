@@ -11,6 +11,7 @@ export function SessionHistoryTable({ sessions }: { sessions: SessionSummary[] }
             <th>Started</th>
             <th>Duration</th>
             <th>Blinks</th>
+            <th>Breaks</th>
           </tr>
         </thead>
         <tbody>
@@ -19,6 +20,7 @@ export function SessionHistoryTable({ sessions }: { sessions: SessionSummary[] }
               <td>{new Date(session.startedAt).toLocaleString()}</td>
               <td>{formatDuration(session.durationSeconds)}</td>
               <td>{session.blinkCount}</td>
+              <td>{session.completedBreaks}</td>
             </tr>
           ))}
         </tbody>

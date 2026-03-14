@@ -2,14 +2,16 @@ import type { CalibrationStatus, MonitoringStatus, ThresholdSettings } from '@sh
 
 interface MonitoringStateInput {
   brightnessScore: number
-  elapsedSeconds: number
   faceDetected: boolean
+  screenFacing: boolean
   thresholds: ThresholdSettings
   breakSettings: { enabled: boolean; intervalMinutes: number }
   eyeClosureSeconds: number
   timeSinceLastBlinkSeconds: number
   calibrationStatus: CalibrationStatus
   drowsinessWarningsEnabled: boolean
+  workCycleElapsedSeconds: number
+  breakProgressSeconds: number
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -20,23 +22,35 @@ export function deriveMonitoringState(
   input: MonitoringStateInput
 ): { eyeStrainScore: number; eyeStrainProgress: number; status: MonitoringStatus } {
   const eyeStrainProgress = clamp(input.timeSinceLastBlinkSeconds / input.thresholds.blinkReminderSeconds, 0, 1)
-  const sessionLoad = clamp(input.elapsedSeconds / 3600, 0, 1)
-  const eyeStrainScore = Number((eyeStrainProgress * 0.8 + sessionLoad * 0.2).toFixed(2))
-
-  if (!input.faceDetected) {
-    return { eyeStrainScore: 0, eyeStrainProgress: 0, status: 'no-face' }
-  }
-
-  if (input.brightnessScore < input.thresholds.lowLightThreshold) {
-    return { eyeStrainScore: eyeStrainScore * 0.25, eyeStrainProgress, status: 'low-light' }
-  }
+  const workCycleProgress = input.breakSettings.enabled
+    ? clamp(input.workCycleElapsedSeconds / (input.breakSettings.intervalMinutes * 60), 0, 1)
+    : 0
+  const eyeStrainScore = Number((eyeStrainProgress * 0.75 + workCycleProgress * 0.25).toFixed(2))
+  const breakDue = input.breakSettings.enabled && workCycleProgress >= 1
+  const breakInProgress = breakDue && input.breakProgressSeconds > 0
 
   if (input.calibrationStatus === 'running') {
     return { eyeStrainScore: 0, eyeStrainProgress: 0, status: 'calibrating' }
   }
 
+  if (breakInProgress) {
+    return { eyeStrainScore: 0, eyeStrainProgress: 0, status: 'break-in-progress' }
+  }
+
+  if (!input.faceDetected) {
+    return { eyeStrainScore: 0, eyeStrainProgress: 0, status: 'no-face' }
+  }
+
   if (input.calibrationStatus !== 'ready') {
     return { eyeStrainScore: 0, eyeStrainProgress: 0, status: 'calibration-needed' }
+  }
+
+  if (!input.screenFacing) {
+    return { eyeStrainScore: 0, eyeStrainProgress, status: breakDue ? 'break-due' : 'looking-away' }
+  }
+
+  if (input.brightnessScore < input.thresholds.lowLightThreshold) {
+    return { eyeStrainScore: eyeStrainScore * 0.25, eyeStrainProgress, status: 'low-light' }
   }
 
   if (input.drowsinessWarningsEnabled && input.eyeClosureSeconds >= input.thresholds.drowsinessHoldSeconds) {
@@ -47,16 +61,16 @@ export function deriveMonitoringState(
     }
   }
 
+  if (breakDue) {
+    return { eyeStrainScore, eyeStrainProgress: 1, status: 'break-due' }
+  }
+
   if (input.timeSinceLastBlinkSeconds >= input.thresholds.blinkReminderSeconds) {
     return {
       eyeStrainScore: Math.max(eyeStrainScore, 1),
       eyeStrainProgress: 1,
       status: 'blink-reminder'
     }
-  }
-
-  if (input.breakSettings.enabled && input.elapsedSeconds >= input.breakSettings.intervalMinutes * 60) {
-    return { eyeStrainScore, eyeStrainProgress, status: 'break-due' }
   }
 
   return { eyeStrainScore, eyeStrainProgress, status: 'monitoring' }

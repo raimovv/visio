@@ -21,8 +21,8 @@ const alertNotifications: Partial<Record<MonitoringStatus, { title: string; body
     body: 'Eyes have been closed for too long. Please refocus or take a short break.'
   },
   'break-due': {
-    title: 'Break due',
-    body: 'Time to rest your eyes for a moment.'
+    title: '20-20-20 break',
+    body: 'Look at something roughly 20 feet away for 20 seconds to reset your eyes.'
   },
   'camera-error': {
     title: 'Camera error',

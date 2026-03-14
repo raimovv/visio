@@ -5,7 +5,7 @@ function getProgressTone(status: MonitoringStatus, progress: number) {
     return 'tone-danger'
   }
 
-  if (status === 'blink-reminder' || status === 'break-due' || progress >= 0.7) {
+  if (status === 'blink-reminder' || status === 'break-due' || status === 'break-in-progress' || progress >= 0.7) {
     return 'tone-warning'
   }
 

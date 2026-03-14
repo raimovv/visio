@@ -26,16 +26,16 @@ export function DashboardPage() {
   return (
     <AppShell
       title="Visio Dashboard"
-      subtitle="Local blink-reminder monitoring with manual EAR calibration, eye-strain tracking, and a persistent overlay."
+      subtitle="Local blink-reminder monitoring with manual calibration, screen-attention gating, and 20-20-20 breaks."
       actions={actions}
     >
       <div className="dashboard-grid">
         <div className="column column-wide">
           <CameraPreview status={snapshot.status} stream={stream} error={cameraError} />
-          <MonitoringStatusCard snapshot={snapshot} />
+          <MonitoringStatusCard snapshot={snapshot} breakSettings={settings.breakSettings} />
           <div className="two-up">
             <BlinkMetricsCard metrics={snapshot.metrics} />
-            <SessionTimerCard metrics={snapshot.metrics} />
+            <SessionTimerCard metrics={snapshot.metrics} breakSettings={settings.breakSettings} />
           </div>
           <CalibrationPanel thresholds={settings.thresholds} metrics={snapshot.metrics} calibration={calibration} />
           <AlertsPanel snapshot={snapshot} />

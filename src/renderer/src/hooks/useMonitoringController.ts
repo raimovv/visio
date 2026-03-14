@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AppSettings, MonitoringSnapshot, SessionSummary } from '@shared/types'
-import type { CalibrationControls, MonitoringActions, MonitoringRuntimeState } from '@renderer/features/monitoring/monitoringTypes'
+import type {
+  CalibrationControls,
+  MonitoringActions,
+  MonitoringRuntimeState
+} from '@renderer/features/monitoring/monitoringTypes'
 import { requestCameraStream } from '@renderer/features/camera/cameraService'
 import { listVideoDevices } from '@renderer/features/camera/deviceService'
 import {
@@ -226,6 +230,8 @@ export function useMonitoringController() {
           averageEar: 0,
           fatigueEvents: 0,
           breakAlerts: 0,
+          completedBreaks: 0,
+          breakTakenAt: [],
           durationSeconds: 0
         }
       } satisfies MonitoringSnapshot
@@ -259,8 +265,7 @@ export function useMonitoringController() {
       const current = useMonitoringStore.getState().snapshot
       if (current.activeSession) {
         const summary = buildSessionSummary(
-          current.activeSession.id,
-          current.activeSession.startedAt,
+          current.activeSession,
           current.metrics,
           reminderEventsRef.current + drowsinessEventsRef.current,
           breakAlertsRef.current
@@ -340,10 +345,12 @@ export function useMonitoringController() {
     snapshot.status === 'calibrating' ||
     snapshot.status === 'monitoring' ||
     snapshot.status === 'blink-reminder' ||
+    snapshot.status === 'looking-away' ||
     snapshot.status === 'paused' ||
     snapshot.status === 'low-light' ||
     snapshot.status === 'no-face' ||
     snapshot.status === 'break-due' ||
+    snapshot.status === 'break-in-progress' ||
     snapshot.status === 'drowsiness-warning'
 
   const actions: MonitoringActions = useMemo(
@@ -387,7 +394,3 @@ export function useMonitoringController() {
     calibration
   }
 }
-
-
-
-

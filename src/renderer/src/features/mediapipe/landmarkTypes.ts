@@ -1,8 +1,27 @@
+export interface EyeBlendshapeSignals {
+  blinkLeft: number
+  blinkRight: number
+  lookDownLeft: number
+  lookDownRight: number
+  lookInLeft: number
+  lookInRight: number
+  lookOutLeft: number
+  lookOutRight: number
+}
+
+export interface HeadPose {
+  yaw: number
+  pitch: number
+  roll: number
+}
+
 export interface FaceLandmarkResult {
   faceDetected: boolean
   brightnessScore: number
-  leftEye: [number, number][]
-  rightEye: [number, number][]
+  leftEar: number
+  rightEar: number
+  eyeSignals: EyeBlendshapeSignals
+  headPose?: HeadPose
 }
 
 export interface FaceLandmarkerRunner {

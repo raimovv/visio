@@ -13,6 +13,9 @@ export function SessionSummaryCards({ sessions }: { sessions: SessionSummary[] }
         <p>
           <strong>Latest Blinks:</strong> {latest?.blinkCount ?? 0}
         </p>
+        <p>
+          <strong>Latest Breaks:</strong> {latest?.completedBreaks ?? 0}
+        </p>
       </div>
     </section>
   )

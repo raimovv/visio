@@ -516,3 +516,36 @@ button:disabled {
     width: 100%;
   }
 }
+
+.status-looking-away {
+  border-color: rgba(159, 177, 207, 0.24);
+}
+
+.status-break-in-progress {
+  border-color: rgba(255, 176, 74, 0.28);
+}
+
+.status-meter-group {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.secondary-meter {
+  margin-bottom: 20px;
+}
+
+.meter-label {
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.status-looking-away .status-dot {
+  background: #9fb1cf;
+}
+
+.status-break-in-progress .status-dot,
+.alert-card.status-break-in-progress {
+  background: var(--warning);
+}

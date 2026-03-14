@@ -3,7 +3,7 @@ import { formatMonitoringStatus, isAlertStatus } from '@renderer/utils/status'
 
 function getAlertMessage(snapshot: MonitoringSnapshot) {
   if (snapshot.status === 'blink-reminder') {
-    return 'Open-eye time is above your healthy blink limit. Blink a few times and reset your eyes.'
+    return 'Open-eye time is above your healthy blink limit. Blink a few times to reset your eyes.'
   }
 
   if (snapshot.status === 'drowsiness-warning') {
@@ -11,7 +11,15 @@ function getAlertMessage(snapshot: MonitoringSnapshot) {
   }
 
   if (snapshot.status === 'break-due') {
-    return 'Break reminder active. Step away for a short eye reset.'
+    return '20-20-20 reminder active. Look at something roughly 20 feet away for 20 seconds.'
+  }
+
+  if (snapshot.status === 'break-in-progress') {
+    return 'Break in progress. Keep your attention away from the screen until the 20-second timer completes.'
+  }
+
+  if (snapshot.status === 'looking-away') {
+    return 'Attention is away from screen, so the eye-strain timer is paused.'
   }
 
   if (snapshot.status === 'camera-error') {
@@ -19,7 +27,7 @@ function getAlertMessage(snapshot: MonitoringSnapshot) {
   }
 
   if (snapshot.status === 'calibration-needed') {
-    return 'Calibration has not been run yet. Start a 6-second calibration to lock in your baseline EAR.'
+    return 'Calibration has not been run yet. Start a 6-second calibration to lock in your relaxed baseline EAR.'
   }
 
   if (snapshot.status === 'calibrating') {

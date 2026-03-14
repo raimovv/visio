@@ -11,7 +11,7 @@ describe('appSettingsSchema', () => {
       breakSettings: {
         enabled: true,
         intervalMinutes: 20,
-        durationMinutes: 2
+        durationSeconds: 20
       },
       overlay: {
         visible: true,
@@ -19,7 +19,7 @@ describe('appSettingsSchema', () => {
         clickThrough: false
       },
       thresholds: {
-        earThreshold: 0.21,
+        earThreshold: 0.12,
         blinkReminderSeconds: 8,
         drowsinessHoldSeconds: 3.5,
         lowLightThreshold: 0.22
@@ -27,7 +27,7 @@ describe('appSettingsSchema', () => {
     })
 
     expect(parsed.thresholds.blinkReminderSeconds).toBe(8)
-    expect(parsed.drowsinessWarningsEnabled).toBe(true)
+    expect(parsed.breakSettings.durationSeconds).toBe(20)
   })
 
   it('rejects invalid threshold ranges', () => {
@@ -40,7 +40,7 @@ describe('appSettingsSchema', () => {
         breakSettings: {
           enabled: true,
           intervalMinutes: 20,
-          durationMinutes: 2
+          durationSeconds: 20
         },
         overlay: {
           visible: true,

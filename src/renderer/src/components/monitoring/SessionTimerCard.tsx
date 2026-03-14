@@ -1,7 +1,13 @@
-import type { MonitoringMetrics } from '@shared/types'
+import type { MonitoringMetrics, BreakSettings } from '@shared/types'
 import { formatDuration } from '@renderer/utils/time'
 
-export function SessionTimerCard({ metrics }: { metrics: MonitoringMetrics }) {
+export function SessionTimerCard({
+  metrics,
+  breakSettings
+}: {
+  metrics: MonitoringMetrics
+  breakSettings: BreakSettings
+}) {
   return (
     <section className="card compact-card">
       <h2>Session</h2>
@@ -14,6 +20,12 @@ export function SessionTimerCard({ metrics }: { metrics: MonitoringMetrics }) {
         </p>
         <p>
           <strong>Time Since Blink:</strong> {metrics.timeSinceLastBlinkSeconds.toFixed(1)}s
+        </p>
+        <p>
+          <strong>Work Cycle:</strong> {formatDuration(Math.floor(metrics.workCycleElapsedSeconds))}
+        </p>
+        <p>
+          <strong>Break Target:</strong> {breakSettings.intervalMinutes}m work / {breakSettings.durationSeconds}s away
         </p>
         <p>
           <strong>Calibration:</strong> {metrics.calibrationStatus}

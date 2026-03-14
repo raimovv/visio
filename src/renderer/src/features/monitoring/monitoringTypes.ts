@@ -1,33 +1,63 @@
 import type { CalibrationStatus, MonitoringStatus, MonitoringSnapshot } from '@shared/types'
+import type { BlinkCalibrationProfile } from './thresholds'
+import type { EyeBlendshapeSignals, HeadPose } from '@renderer/features/mediapipe/landmarkTypes'
 
 export interface MonitoringFrameInput {
-  leftEye: [number, number][]
-  rightEye: [number, number][]
+  leftEar: number
+  rightEar: number
   brightnessScore: number
   faceDetected: boolean
+  eyeSignals: EyeBlendshapeSignals
+  headPose?: HeadPose
   timestamp: number
 }
 
+export interface BlinkFrameSample {
+  timestamp: number
+  averageEar: number
+  closureScore: number
+}
+
 export interface BlinkDetectionState {
+  recentSamples: BlinkFrameSample[]
   closedEyesStartedAt?: number
   eyeClosureSeconds: number
   blinkCount: number
   lastBlinkAt?: number
   lastTimestamp?: number
-  openEyesSinceBlinkMs: number
+  blinkDetected: boolean
+  peakClosureScore?: number
+  minCombinedEar?: number
+}
+
+export interface CalibrationSample {
+  leftEar: number
+  rightEar: number
 }
 
 export interface CalibrationRuntimeState {
   status: CalibrationStatus
   startedAt?: number
   durationMs: number
-  samples: number[]
+  samples: CalibrationSample[]
+  profile?: BlinkCalibrationProfile
+}
+
+export interface BreakRuntimeState {
+  lastTimestamp?: number
+  workCycleElapsedMs: number
+  breakProgressMs: number
+  completedBreaks: number
+  breakTakenAt: string[]
 }
 
 export interface MonitoringRuntimeState {
   blink: BlinkDetectionState
   calibration: CalibrationRuntimeState
+  breakCycle: BreakRuntimeState
   smoothedEar?: number
+  timeSinceLastBlinkMs: number
+  lastFrameTimestamp?: number
 }
 
 export interface MonitoringActions {

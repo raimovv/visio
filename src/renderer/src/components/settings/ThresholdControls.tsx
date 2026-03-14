@@ -67,8 +67,8 @@ export function ThresholdControls({
         </div>
       </label>
       <p className="helper-text">
-        Blink reminders use open-eye time without blinking. Drowsiness warnings only trigger on sustained eye
-        closure.
+        Blink reminders use open-eye time while you are actively looking at the screen. Looking away pauses the timer.
+        Drowsiness warnings only trigger on sustained eye closure.
       </p>
     </div>
   )

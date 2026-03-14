@@ -1,7 +1,10 @@
 import { appSettingsSchema } from '@shared/schemas'
 import type { AppSettings } from '@shared/types'
 import { defaultSettings } from '@main/constants'
-import { normalizePersistedEarThreshold } from './settingsMigration'
+import {
+  normalizePersistedBreakDurationSeconds,
+  normalizePersistedEarThreshold
+} from './settingsMigration'
 
 // electron-store is ESM-only; the Electron main bundle must load its default export at runtime.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -18,10 +21,17 @@ function mergeSettings(rawSettings?: Partial<AppSettings>): AppSettings {
   const legacyThresholds =
     (rawSettings?.thresholds as { consecutiveFrameThreshold?: number; drowsyFatigueScore?: number } | undefined) ??
     {}
+  const rawBreakSettings =
+    (rawSettings?.breakSettings as { enabled?: boolean; intervalMinutes?: number; durationSeconds?: number; durationMinutes?: number } | undefined) ??
+    {}
   const isLegacySettings = typeof legacyThresholds.consecutiveFrameThreshold === 'number'
   const migratedEarThreshold = normalizePersistedEarThreshold(
     rawSettings?.thresholds?.earThreshold,
     defaultSettings.thresholds.earThreshold
+  )
+  const migratedBreakDurationSeconds = normalizePersistedBreakDurationSeconds(
+    rawBreakSettings,
+    defaultSettings.breakSettings.durationSeconds
   )
 
   return {
@@ -31,7 +41,8 @@ function mergeSettings(rawSettings?: Partial<AppSettings>): AppSettings {
       rawSettings?.drowsinessWarningsEnabled ?? defaultSettings.drowsinessWarningsEnabled,
     breakSettings: {
       ...defaultSettings.breakSettings,
-      ...(rawSettings?.breakSettings ?? {})
+      ...(rawSettings?.breakSettings ?? {}),
+      durationSeconds: migratedBreakDurationSeconds
     },
     overlay: {
       ...defaultSettings.overlay,

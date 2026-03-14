@@ -9,6 +9,12 @@ export function BlinkMetricsCard({ metrics }: { metrics: MonitoringMetrics }) {
           <strong>EAR:</strong> {metrics.ear.toFixed(3)}
         </p>
         <p>
+          <strong>Left EAR:</strong> {metrics.leftEar.toFixed(3)}
+        </p>
+        <p>
+          <strong>Right EAR:</strong> {metrics.rightEar.toFixed(3)}
+        </p>
+        <p>
           <strong>Smoothed EAR:</strong> {metrics.smoothedEar.toFixed(3)}
         </p>
         <p>

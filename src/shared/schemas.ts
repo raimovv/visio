@@ -3,7 +3,7 @@ import { z } from 'zod'
 export const breakSettingsSchema = z.object({
   enabled: z.boolean(),
   intervalMinutes: z.number().int().min(1).max(180),
-  durationMinutes: z.number().int().min(1).max(60)
+  durationSeconds: z.number().int().min(5).max(120)
 })
 
 export const overlaySettingsSchema = z.object({
@@ -38,6 +38,8 @@ export const sessionSummarySchema = z.object({
   averageEar: z.number().min(0),
   fatigueEvents: z.number().int().min(0),
   breakAlerts: z.number().int().min(0),
+  completedBreaks: z.number().int().min(0).default(0),
+  breakTakenAt: z.array(z.string()).default([]),
   durationSeconds: z.number().int().min(0)
 })
 

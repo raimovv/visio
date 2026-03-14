@@ -5,26 +5,34 @@ export type MonitoringStatus =
   | 'calibrating'
   | 'monitoring'
   | 'blink-reminder'
+  | 'looking-away'
   | 'paused'
   | 'no-face'
   | 'low-light'
   | 'drowsiness-warning'
   | 'break-due'
+  | 'break-in-progress'
   | 'camera-error'
 
 export type CalibrationStatus = 'not-started' | 'running' | 'ready'
 
 export interface MonitoringMetrics {
   ear: number
+  leftEar: number
+  rightEar: number
   smoothedEar: number
   blinkCount: number
   eyeStrainScore: number
   eyeStrainProgress: number
   timeSinceLastBlinkSeconds: number
   faceDetected: boolean
+  screenFacing: boolean
   brightnessScore: number
   elapsedSeconds: number
+  workCycleElapsedSeconds: number
   eyeClosureSeconds: number
+  breakProgressSeconds: number
+  breakProgress: number
   activeEarThreshold: number
   baselineEar?: number
   calibrationStatus: CalibrationStatus
@@ -43,7 +51,7 @@ export interface OverlayState {
 export interface BreakSettings {
   enabled: boolean
   intervalMinutes: number
-  durationMinutes: number
+  durationSeconds: number
 }
 
 export interface OverlaySettings {
@@ -78,6 +86,8 @@ export interface SessionSummary {
   averageEar: number
   fatigueEvents: number
   breakAlerts: number
+  completedBreaks: number
+  breakTakenAt: string[]
   durationSeconds: number
 }
 

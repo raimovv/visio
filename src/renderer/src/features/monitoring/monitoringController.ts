@@ -1,9 +1,14 @@
 import type { AppSettings, MonitoringSnapshot, MonitoringStatus } from '@shared/types'
 import type { MonitoringFrameInput, MonitoringRuntimeState } from './monitoringTypes'
-import { calculateEyeAspectRatio } from './ear'
 import { detectBlink } from './blinkDetector'
+import { updateBreakCycle, createBreakRuntimeState } from './breakCycle'
 import { deriveMonitoringState } from './fatigueRules'
-import { computeBlinkThresholds, finalizeCalibrationBaseline } from './thresholds'
+import { deriveScreenAttention } from './attention'
+import {
+  computeBlinkThresholds,
+  finalizeCalibrationBaseline,
+  type BlinkCalibrationProfile
+} from './thresholds'
 import { formatMonitoringStatus } from '@renderer/utils/status'
 
 const CALIBRATION_DURATION_MS = 6000
@@ -12,7 +17,7 @@ const MIN_VALID_EAR = 0.08
 const MAX_VALID_EAR = 0.7
 const MIN_CALIBRATION_EAR = 0.12
 const MAX_CALIBRATION_EAR = 0.6
-const EAR_SMOOTHING_ALPHA = 0.28
+const EAR_SMOOTHING_ALPHA = 0.2
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
@@ -44,7 +49,11 @@ function buildOverlaySublabel(
   eyeClosureSeconds: number,
   timeSinceLastBlinkSeconds: number,
   blinkReminderSeconds: number,
-  calibrationProgress: number
+  calibrationProgress: number,
+  breakProgressSeconds: number,
+  breakDurationSeconds: number,
+  workCycleElapsedSeconds: number,
+  workIntervalMinutes: number
 ) {
   if (status === 'calibrating') {
     return `Relaxed gaze capture: ${Math.round(calibrationProgress * 100)}%`
@@ -62,8 +71,16 @@ function buildOverlaySublabel(
     return `Open-eye streak: ${timeSinceLastBlinkSeconds.toFixed(1)}s`
   }
 
+  if (status === 'break-in-progress') {
+    return `Away break: ${breakProgressSeconds.toFixed(1)} / ${breakDurationSeconds}s`
+  }
+
   if (status === 'break-due') {
-    return 'Take a short eye break'
+    return `20-20-20 break: look away for ${breakDurationSeconds}s`
+  }
+
+  if (status === 'looking-away') {
+    return 'Eye-strain timer paused while you look away'
   }
 
   if (status === 'low-light') {
@@ -75,20 +92,23 @@ function buildOverlaySublabel(
   }
 
   const remainingSeconds = Math.max(0, blinkReminderSeconds - timeSinceLastBlinkSeconds)
-  return `EAR: ${smoothedEar.toFixed(3)} | Blink in ${remainingSeconds.toFixed(1)}s`
+  const breakRemainingMinutes = Math.max(0, workIntervalMinutes - workCycleElapsedSeconds / 60)
+  return `EAR: ${smoothedEar.toFixed(3)} | Blink in ${remainingSeconds.toFixed(1)}s | Break in ${breakRemainingMinutes.toFixed(1)}m`
 }
 
 function updateCalibration(
   runtime: MonitoringRuntimeState,
-  smoothedEar: number,
+  leftEar: number,
+  rightEar: number,
   faceDetected: boolean,
+  screenFacing: boolean,
   timestamp: number,
   minimumEarThreshold: number
 ) {
   if (runtime.calibration.status !== 'running') {
     return {
       calibration: runtime.calibration,
-      baselineEar: undefined as number | undefined,
+      baselineEar: runtime.calibration.profile?.combinedBaselineEar,
       calibrationProgress: runtime.calibration.status === 'ready' ? 1 : 0,
       completed: false
     }
@@ -96,25 +116,45 @@ function updateCalibration(
 
   const elapsedMs = Math.max(0, timestamp - (runtime.calibration.startedAt ?? timestamp))
   const nextSamples =
-    faceDetected && smoothedEar >= MIN_CALIBRATION_EAR && smoothedEar <= MAX_CALIBRATION_EAR
-      ? [...runtime.calibration.samples, smoothedEar]
+    faceDetected &&
+    screenFacing &&
+    leftEar >= MIN_CALIBRATION_EAR &&
+    leftEar <= MAX_CALIBRATION_EAR &&
+    rightEar >= MIN_CALIBRATION_EAR &&
+    rightEar <= MAX_CALIBRATION_EAR
+      ? [...runtime.calibration.samples, { leftEar, rightEar }]
       : runtime.calibration.samples
 
   const minimumReached = elapsedMs >= runtime.calibration.durationMs
   const maximumReached = elapsedMs >= MAX_CALIBRATION_DURATION_MS
 
   if ((minimumReached && nextSamples.length >= 45) || maximumReached) {
-    const baselineEar = finalizeCalibrationBaseline(nextSamples, minimumEarThreshold)
-    if (baselineEar) {
+    const profile = finalizeCalibrationBaseline(nextSamples, minimumEarThreshold)
+    if (profile) {
       return {
         calibration: {
           status: 'ready',
           durationMs: CALIBRATION_DURATION_MS,
-          samples: []
+          samples: [],
+          profile
         },
-        baselineEar,
+        baselineEar: profile.combinedBaselineEar,
         calibrationProgress: 1,
         completed: true
+      }
+    }
+
+    if (runtime.calibration.profile) {
+      return {
+        calibration: {
+          status: 'ready',
+          durationMs: CALIBRATION_DURATION_MS,
+          samples: [],
+          profile: runtime.calibration.profile
+        },
+        baselineEar: runtime.calibration.profile.combinedBaselineEar,
+        calibrationProgress: 1,
+        completed: false
       }
     }
 
@@ -135,7 +175,7 @@ function updateCalibration(
       ...runtime.calibration,
       samples: nextSamples
     },
-    baselineEar: undefined as number | undefined,
+    baselineEar: runtime.calibration.profile?.combinedBaselineEar,
     calibrationProgress: Number(clamp(elapsedMs / runtime.calibration.durationMs, 0, 1).toFixed(2)),
     completed: false
   }
@@ -144,16 +184,20 @@ function updateCalibration(
 export function createMonitoringRuntimeState(): MonitoringRuntimeState {
   return {
     blink: {
+      recentSamples: [],
       eyeClosureSeconds: 0,
       blinkCount: 0,
-      openEyesSinceBlinkMs: 0
+      blinkDetected: false
     },
     calibration: {
       status: 'not-started',
       durationMs: CALIBRATION_DURATION_MS,
       samples: []
     },
-    smoothedEar: undefined
+    breakCycle: createBreakRuntimeState(),
+    smoothedEar: undefined,
+    timeSinceLastBlinkMs: 0,
+    lastFrameTimestamp: undefined
   }
 }
 
@@ -162,16 +206,22 @@ export function startCalibrationRun(runtime: MonitoringRuntimeState, timestamp: 
     ...runtime,
     blink: {
       ...runtime.blink,
+      recentSamples: [],
       closedEyesStartedAt: undefined,
       eyeClosureSeconds: 0,
-      openEyesSinceBlinkMs: 0,
-      lastTimestamp: timestamp
+      lastTimestamp: timestamp,
+      blinkDetected: false,
+      peakClosureScore: undefined,
+      minCombinedEar: undefined
     },
+    timeSinceLastBlinkMs: 0,
+    lastFrameTimestamp: timestamp,
     calibration: {
       status: 'running',
       startedAt: timestamp,
       durationMs: CALIBRATION_DURATION_MS,
-      samples: []
+      samples: [],
+      profile: runtime.calibration.profile
     }
   }
 }
@@ -187,7 +237,9 @@ export function buildCalibrationSnapshot(snapshot: MonitoringSnapshot): Monitori
       eyeStrainScore: 0,
       eyeStrainProgress: 0,
       timeSinceLastBlinkSeconds: 0,
-      eyeClosureSeconds: 0
+      eyeClosureSeconds: 0,
+      breakProgressSeconds: 0,
+      breakProgress: 0
     },
     overlay: {
       ...snapshot.overlay,
@@ -205,30 +257,33 @@ export function processMonitoringFrame(
   settings: AppSettings,
   runtime: MonitoringRuntimeState
 ) {
-  const leftEar = calculateEyeAspectRatio(frame.leftEye)
-  const rightEar = calculateEyeAspectRatio(frame.rightEye)
-  const rawEar = sanitizeEar(Number(((leftEar + rightEar) / 2).toFixed(3)))
-  const smoothedEar =
-    frame.faceDetected && rawEar >= MIN_VALID_EAR ? smoothEar(rawEar, runtime.smoothedEar) : 0
-
+  const leftEar = sanitizeEar(frame.leftEar)
+  const rightEar = sanitizeEar(frame.rightEar)
+  const rawEar = Number(((leftEar + rightEar) / 2).toFixed(3))
+  const smoothedEar = frame.faceDetected && rawEar >= MIN_VALID_EAR ? smoothEar(rawEar, runtime.smoothedEar) : 0
+  const attention = deriveScreenAttention(frame.faceDetected, frame.eyeSignals, frame.headPose)
   const calibrationUpdate = updateCalibration(
     runtime,
-    smoothedEar,
+    leftEar,
+    rightEar,
     frame.faceDetected,
+    attention.screenFacing,
     frame.timestamp,
     settings.thresholds.earThreshold
   )
-
-  const baselineEar = calibrationUpdate.baselineEar ?? snapshot.metrics.baselineEar
-  const thresholds = computeBlinkThresholds(baselineEar, settings.thresholds.earThreshold)
+  const calibrationProfile: BlinkCalibrationProfile | undefined = calibrationUpdate.calibration.profile
+  const baselineEar = calibrationProfile?.combinedBaselineEar ?? snapshot.metrics.baselineEar
+  const thresholds = computeBlinkThresholds(calibrationProfile, settings.thresholds.earThreshold)
   const trackingEnabled = frame.faceDetected && calibrationUpdate.calibration.status === 'ready'
 
   let blinkState = detectBlink({
-    ear: smoothedEar,
-    closeThreshold: thresholds.closeThreshold,
-    openThreshold: thresholds.openThreshold,
-    blinkMinDurationMs: 80,
-    blinkMaxDurationMs: 600,
+    leftEar,
+    rightEar,
+    blinkLeftScore: frame.eyeSignals.blinkLeft,
+    blinkRightScore: frame.eyeSignals.blinkRight,
+    thresholds,
+    blinkMinDurationMs: 60,
+    blinkMaxDurationMs: 1000,
     timestamp: frame.timestamp,
     trackingEnabled,
     state: runtime.blink
@@ -237,53 +292,105 @@ export function processMonitoringFrame(
   if (calibrationUpdate.completed) {
     blinkState = {
       ...blinkState,
+      recentSamples: [],
       closedEyesStartedAt: undefined,
       eyeClosureSeconds: 0,
-      openEyesSinceBlinkMs: 0,
-      lastTimestamp: frame.timestamp
+      lastTimestamp: frame.timestamp,
+      blinkDetected: false,
+      peakClosureScore: undefined,
+      minCombinedEar: undefined
     }
+  }
+
+  const deltaMs = runtime.lastFrameTimestamp !== undefined ? Math.max(0, frame.timestamp - runtime.lastFrameTimestamp) : 0
+  let timeSinceLastBlinkMs = runtime.timeSinceLastBlinkMs
+
+  if (blinkState.blinkDetected) {
+    timeSinceLastBlinkMs = 0
+  } else if (
+    trackingEnabled &&
+    frame.faceDetected &&
+    attention.screenFacing &&
+    blinkState.eyeClosureSeconds === 0
+  ) {
+    timeSinceLastBlinkMs += deltaMs
+  }
+
+  const breakUpdate = updateBreakCycle({
+    state: runtime.breakCycle,
+    timestamp: frame.timestamp,
+    settings: settings.breakSettings,
+    faceDetected: frame.faceDetected,
+    screenFacing: attention.screenFacing
+  })
+
+  if (breakUpdate.justCompleted) {
+    timeSinceLastBlinkMs = 0
   }
 
   const sessionStart = snapshot.activeSession?.startedAt ? Date.parse(snapshot.activeSession.startedAt) : frame.timestamp
   const elapsedSeconds = Math.max(snapshot.metrics.elapsedSeconds, Math.floor((frame.timestamp - sessionStart) / 1000))
-  const timeSinceLastBlinkSeconds = Number((blinkState.openEyesSinceBlinkMs / 1000).toFixed(2))
-
+  const timeSinceLastBlinkSeconds = Number((timeSinceLastBlinkMs / 1000).toFixed(2))
   const derived = deriveMonitoringState({
     brightnessScore: frame.brightnessScore,
-    elapsedSeconds,
     faceDetected: frame.faceDetected,
+    screenFacing: attention.screenFacing,
     thresholds: settings.thresholds,
     breakSettings: settings.breakSettings,
     eyeClosureSeconds: blinkState.eyeClosureSeconds,
     timeSinceLastBlinkSeconds,
     calibrationStatus: calibrationUpdate.calibration.status,
-    drowsinessWarningsEnabled: settings.drowsinessWarningsEnabled
+    drowsinessWarningsEnabled: settings.drowsinessWarningsEnabled,
+    workCycleElapsedSeconds: breakUpdate.workCycleElapsedSeconds,
+    breakProgressSeconds: breakUpdate.breakProgressSeconds
   })
 
   const overlayProgress =
-    derived.status === 'calibrating' ? calibrationUpdate.calibrationProgress : derived.eyeStrainProgress
+    derived.status === 'calibrating'
+      ? calibrationUpdate.calibrationProgress
+      : derived.status === 'break-due' || derived.status === 'break-in-progress'
+        ? breakUpdate.breakProgress
+        : derived.eyeStrainProgress
+
+  const nextActiveSession = snapshot.activeSession
+    ? {
+        ...snapshot.activeSession,
+        completedBreaks: breakUpdate.state.completedBreaks,
+        breakTakenAt: breakUpdate.state.breakTakenAt
+      }
+    : undefined
 
   return {
     runtime: {
       blink: blinkState,
       calibration: calibrationUpdate.calibration,
-      smoothedEar
+      breakCycle: breakUpdate.state,
+      smoothedEar,
+      timeSinceLastBlinkMs,
+      lastFrameTimestamp: frame.timestamp
     },
     snapshot: {
       ...snapshot,
       status: derived.status,
+      activeSession: nextActiveSession,
       metrics: {
         ...snapshot.metrics,
         ear: rawEar,
+        leftEar,
+        rightEar,
         smoothedEar,
         blinkCount: blinkState.blinkCount,
         eyeStrainScore: derived.eyeStrainScore,
         eyeStrainProgress: derived.eyeStrainProgress,
         timeSinceLastBlinkSeconds,
         faceDetected: frame.faceDetected,
+        screenFacing: attention.screenFacing,
         brightnessScore: frame.brightnessScore,
         elapsedSeconds,
+        workCycleElapsedSeconds: breakUpdate.workCycleElapsedSeconds,
         eyeClosureSeconds: blinkState.eyeClosureSeconds,
+        breakProgressSeconds: breakUpdate.breakProgressSeconds,
+        breakProgress: breakUpdate.breakProgress,
         activeEarThreshold: thresholds.closeThreshold,
         baselineEar,
         calibrationStatus: calibrationUpdate.calibration.status,
@@ -301,10 +408,15 @@ export function processMonitoringFrame(
           blinkState.eyeClosureSeconds,
           timeSinceLastBlinkSeconds,
           settings.thresholds.blinkReminderSeconds,
-          calibrationUpdate.calibrationProgress
+          calibrationUpdate.calibrationProgress,
+          breakUpdate.breakProgressSeconds,
+          settings.breakSettings.durationSeconds,
+          breakUpdate.workCycleElapsedSeconds,
+          settings.breakSettings.intervalMinutes
         ),
         progress: overlayProgress
       }
     } satisfies MonitoringSnapshot
   }
 }
+

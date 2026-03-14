@@ -65,4 +65,3 @@ export function CalibrationPanel({ thresholds, metrics, calibration }: Calibrati
     </section>
   )
 }
-

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { deriveMonitoringState } from '../../src/renderer/src/features/monitoring/fatigueRules'
 
 const thresholds = {
-  earThreshold: 0.21,
+  earThreshold: 0.12,
   blinkReminderSeconds: 8,
   drowsinessHoldSeconds: 3.5,
   lowLightThreshold: 0.22
@@ -13,14 +13,16 @@ describe('deriveMonitoringState', () => {
     expect(
       deriveMonitoringState({
         brightnessScore: 0.8,
-        elapsedSeconds: 120,
         faceDetected: false,
+        screenFacing: false,
         thresholds,
         breakSettings: { enabled: true, intervalMinutes: 20 },
         eyeClosureSeconds: 0,
         timeSinceLastBlinkSeconds: 0,
         calibrationStatus: 'ready',
-        drowsinessWarningsEnabled: true
+        drowsinessWarningsEnabled: true,
+        workCycleElapsedSeconds: 120,
+        breakProgressSeconds: 0
       }).status
     ).toBe('no-face')
   })
@@ -29,30 +31,52 @@ describe('deriveMonitoringState', () => {
     expect(
       deriveMonitoringState({
         brightnessScore: 0.7,
-        elapsedSeconds: 60,
         faceDetected: true,
+        screenFacing: true,
         thresholds,
         breakSettings: { enabled: true, intervalMinutes: 20 },
         eyeClosureSeconds: 0,
         timeSinceLastBlinkSeconds: 0,
         calibrationStatus: 'not-started',
-        drowsinessWarningsEnabled: true
+        drowsinessWarningsEnabled: true,
+        workCycleElapsedSeconds: 60,
+        breakProgressSeconds: 0
       }).status
     ).toBe('calibration-needed')
+  })
+
+  it('reports looking-away before blink reminders while attention is off-screen', () => {
+    expect(
+      deriveMonitoringState({
+        brightnessScore: 0.7,
+        faceDetected: true,
+        screenFacing: false,
+        thresholds,
+        breakSettings: { enabled: true, intervalMinutes: 20 },
+        eyeClosureSeconds: 0,
+        timeSinceLastBlinkSeconds: 9,
+        calibrationStatus: 'ready',
+        drowsinessWarningsEnabled: true,
+        workCycleElapsedSeconds: 240,
+        breakProgressSeconds: 0
+      }).status
+    ).toBe('looking-away')
   })
 
   it('reports blink-reminder after a sustained open-eye streak', () => {
     expect(
       deriveMonitoringState({
         brightnessScore: 0.7,
-        elapsedSeconds: 240,
         faceDetected: true,
+        screenFacing: true,
         thresholds,
         breakSettings: { enabled: true, intervalMinutes: 20 },
         eyeClosureSeconds: 0.2,
         timeSinceLastBlinkSeconds: 8.4,
         calibrationStatus: 'ready',
-        drowsinessWarningsEnabled: true
+        drowsinessWarningsEnabled: true,
+        workCycleElapsedSeconds: 240,
+        breakProgressSeconds: 0
       }).status
     ).toBe('blink-reminder')
   })
@@ -61,31 +85,53 @@ describe('deriveMonitoringState', () => {
     expect(
       deriveMonitoringState({
         brightnessScore: 0.7,
-        elapsedSeconds: 240,
         faceDetected: true,
+        screenFacing: true,
         thresholds,
         breakSettings: { enabled: true, intervalMinutes: 20 },
         eyeClosureSeconds: 3.7,
         timeSinceLastBlinkSeconds: 1,
         calibrationStatus: 'ready',
-        drowsinessWarningsEnabled: true
+        drowsinessWarningsEnabled: true,
+        workCycleElapsedSeconds: 240,
+        breakProgressSeconds: 0
       }).status
     ).toBe('drowsiness-warning')
   })
 
-  it('falls back to break-due when drowsiness warnings are disabled', () => {
+  it('reports break-due once the 20-minute work cycle is reached', () => {
     expect(
       deriveMonitoringState({
         brightnessScore: 0.7,
-        elapsedSeconds: 1200,
         faceDetected: true,
+        screenFacing: true,
         thresholds,
         breakSettings: { enabled: true, intervalMinutes: 20 },
-        eyeClosureSeconds: 3.7,
-        timeSinceLastBlinkSeconds: 0.5,
+        eyeClosureSeconds: 0,
+        timeSinceLastBlinkSeconds: 2,
         calibrationStatus: 'ready',
-        drowsinessWarningsEnabled: false
+        drowsinessWarningsEnabled: false,
+        workCycleElapsedSeconds: 1200,
+        breakProgressSeconds: 0
       }).status
     ).toBe('break-due')
+  })
+
+  it('reports break-in-progress while the user stays away during a due break', () => {
+    expect(
+      deriveMonitoringState({
+        brightnessScore: 0.7,
+        faceDetected: true,
+        screenFacing: false,
+        thresholds,
+        breakSettings: { enabled: true, intervalMinutes: 20 },
+        eyeClosureSeconds: 0,
+        timeSinceLastBlinkSeconds: 2,
+        calibrationStatus: 'ready',
+        drowsinessWarningsEnabled: false,
+        workCycleElapsedSeconds: 1200,
+        breakProgressSeconds: 9
+      }).status
+    ).toBe('break-in-progress')
   })
 })
