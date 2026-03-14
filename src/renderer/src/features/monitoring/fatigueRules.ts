@@ -3,7 +3,6 @@ import type { CalibrationStatus, MonitoringStatus, ThresholdSettings } from '@sh
 interface MonitoringStateInput {
   brightnessScore: number
   faceDetected: boolean
-  screenFacing: boolean
   thresholds: ThresholdSettings
   breakSettings: { enabled: boolean; intervalMinutes: number }
   eyeClosureSeconds: number
@@ -43,10 +42,6 @@ export function deriveMonitoringState(
 
   if (input.calibrationStatus !== 'ready') {
     return { eyeStrainScore: 0, eyeStrainProgress: 0, status: 'calibration-needed' }
-  }
-
-  if (!input.screenFacing) {
-    return { eyeStrainScore: 0, eyeStrainProgress, status: breakDue ? 'break-due' : 'looking-away' }
   }
 
   if (input.brightnessScore < input.thresholds.lowLightThreshold) {

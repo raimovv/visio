@@ -6,7 +6,7 @@ import { windowState } from './windowState'
 export function getOverlayBounds(
   bounds: Electron.Rectangle,
   settings: OverlaySettings,
-  size: { width: number; height: number } = { width: 340, height: 92 }
+  size: { width: number; height: number } = { width: 318, height: 104 }
 ) {
   const margin = 18
   const xByCorner =

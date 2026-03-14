@@ -46,6 +46,7 @@ export interface CalibrationRuntimeState {
 export interface BreakRuntimeState {
   lastTimestamp?: number
   workCycleElapsedMs: number
+  breakConfirmMs: number
   breakProgressMs: number
   completedBreaks: number
   breakTakenAt: string[]

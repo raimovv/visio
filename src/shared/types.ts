@@ -5,7 +5,6 @@ export type MonitoringStatus =
   | 'calibrating'
   | 'monitoring'
   | 'blink-reminder'
-  | 'looking-away'
   | 'paused'
   | 'no-face'
   | 'low-light'

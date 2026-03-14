@@ -549,3 +549,50 @@ button:disabled {
 .alert-card.status-break-in-progress {
   background: var(--warning);
 }
+
+
+.overlay-badge {
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.overlay-main,
+.overlay-open,
+.overlay-copy {
+  min-width: 0;
+}
+
+.overlay-main {
+  gap: 8px;
+}
+
+.overlay-copy {
+  gap: 3px;
+}
+
+.overlay-copy strong {
+  font-size: 13px;
+  line-height: 1.1;
+}
+
+.overlay-copy small {
+  color: var(--muted);
+  display: block;
+  font-size: 12px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.overlay-drag {
+  align-self: stretch;
+  font-size: 12px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  box-shadow: 0 0 0 5px rgba(76, 214, 178, 0.1);
+}

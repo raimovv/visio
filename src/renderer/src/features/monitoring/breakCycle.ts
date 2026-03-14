@@ -15,9 +15,13 @@ interface BreakCycleUpdate {
   inProgress: boolean
   justCompleted: boolean
   workCycleElapsedSeconds: number
+  breakConfirmationSeconds: number
+  breakConfirmationProgress: number
   breakProgressSeconds: number
   breakProgress: number
 }
+
+const NO_FACE_CONFIRMATION_MS = 5000
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
@@ -26,6 +30,7 @@ function clamp(value: number, min: number, max: number) {
 export function createBreakRuntimeState(): BreakRuntimeState {
   return {
     workCycleElapsedMs: 0,
+    breakConfirmMs: 0,
     breakProgressMs: 0,
     completedBreaks: 0,
     breakTakenAt: []
@@ -47,16 +52,18 @@ export function updateBreakCycle(input: UpdateBreakCycleInput): BreakCycleUpdate
       inProgress: false,
       justCompleted: false,
       workCycleElapsedSeconds: 0,
+      breakConfirmationSeconds: 0,
+      breakConfirmationProgress: 0,
       breakProgressSeconds: 0,
       breakProgress: 0
     }
   }
 
   let workCycleElapsedMs = input.state.workCycleElapsedMs
+  let breakConfirmMs = input.state.breakConfirmMs
   let breakProgressMs = input.state.breakProgressMs
   let completedBreaks = input.state.completedBreaks
   let breakTakenAt = input.state.breakTakenAt
-  const isAwayFromScreen = !input.faceDetected || !input.screenFacing
 
   if (workCycleElapsedMs < intervalMs && input.faceDetected && input.screenFacing) {
     workCycleElapsedMs = Math.min(intervalMs, workCycleElapsedMs + deltaMs)
@@ -66,20 +73,33 @@ export function updateBreakCycle(input: UpdateBreakCycleInput): BreakCycleUpdate
   let justCompleted = false
 
   if (breakDue) {
-    if (isAwayFromScreen) {
-      breakProgressMs = Math.min(breakDurationMs, breakProgressMs + deltaMs)
+    if (!input.faceDetected) {
+      const totalConfirmMs = breakConfirmMs + deltaMs
+      const confirmedBefore = breakConfirmMs >= NO_FACE_CONFIRMATION_MS
+      breakConfirmMs = Math.min(NO_FACE_CONFIRMATION_MS, totalConfirmMs)
+
+      if (breakConfirmMs >= NO_FACE_CONFIRMATION_MS) {
+        const confirmedDeltaMs = confirmedBefore ? deltaMs : Math.max(0, totalConfirmMs - NO_FACE_CONFIRMATION_MS)
+        breakProgressMs = Math.min(breakDurationMs, breakProgressMs + confirmedDeltaMs)
+      }
+
       if (breakProgressMs >= breakDurationMs) {
         justCompleted = true
         completedBreaks += 1
         breakTakenAt = [...breakTakenAt, new Date(input.timestamp).toISOString()]
         workCycleElapsedMs = 0
+        breakConfirmMs = 0
         breakProgressMs = 0
         breakDue = false
       }
-    } else if (breakProgressMs > 0) {
-      breakProgressMs = 0
+    } else {
+      breakConfirmMs = 0
+      if (breakProgressMs > 0) {
+        breakProgressMs = 0
+      }
     }
-  } else if (breakProgressMs > 0) {
+  } else {
+    breakConfirmMs = 0
     breakProgressMs = 0
   }
 
@@ -87,6 +107,7 @@ export function updateBreakCycle(input: UpdateBreakCycleInput): BreakCycleUpdate
     state: {
       lastTimestamp: input.timestamp,
       workCycleElapsedMs,
+      breakConfirmMs,
       breakProgressMs,
       completedBreaks,
       breakTakenAt
@@ -95,8 +116,9 @@ export function updateBreakCycle(input: UpdateBreakCycleInput): BreakCycleUpdate
     inProgress: breakProgressMs > 0,
     justCompleted,
     workCycleElapsedSeconds: Number((workCycleElapsedMs / 1000).toFixed(2)),
+    breakConfirmationSeconds: Number((breakConfirmMs / 1000).toFixed(2)),
+    breakConfirmationProgress: Number(clamp(breakConfirmMs / NO_FACE_CONFIRMATION_MS, 0, 1).toFixed(2)),
     breakProgressSeconds: Number((breakProgressMs / 1000).toFixed(2)),
     breakProgress: Number(clamp(breakProgressMs / breakDurationMs, 0, 1).toFixed(2))
   }
 }
-

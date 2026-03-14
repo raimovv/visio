@@ -18,6 +18,7 @@ const MAX_VALID_EAR = 0.7
 const MIN_CALIBRATION_EAR = 0.12
 const MAX_CALIBRATION_EAR = 0.6
 const EAR_SMOOTHING_ALPHA = 0.2
+const BREAK_CONFIRMATION_SECONDS = 5
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
@@ -50,6 +51,7 @@ function buildOverlaySublabel(
   timeSinceLastBlinkSeconds: number,
   blinkReminderSeconds: number,
   calibrationProgress: number,
+  breakConfirmationSeconds: number,
   breakProgressSeconds: number,
   breakDurationSeconds: number,
   workCycleElapsedSeconds: number,
@@ -72,15 +74,15 @@ function buildOverlaySublabel(
   }
 
   if (status === 'break-in-progress') {
-    return `Away break: ${breakProgressSeconds.toFixed(1)} / ${breakDurationSeconds}s`
+    return `Break countdown: ${breakProgressSeconds.toFixed(1)} / ${breakDurationSeconds}s`
   }
 
   if (status === 'break-due') {
-    return `20-20-20 break: look away for ${breakDurationSeconds}s`
+    return `Look away. ${BREAK_CONFIRMATION_SECONDS}s confirm, then ${breakDurationSeconds}s.`
   }
 
-  if (status === 'looking-away') {
-    return 'Eye-strain timer paused while you look away'
+  if (status === 'no-face' && breakConfirmationSeconds > 0) {
+    return `Break check: ${breakConfirmationSeconds.toFixed(1)} / ${BREAK_CONFIRMATION_SECONDS}s`
   }
 
   if (status === 'low-light') {
@@ -334,7 +336,6 @@ export function processMonitoringFrame(
   const derived = deriveMonitoringState({
     brightnessScore: frame.brightnessScore,
     faceDetected: frame.faceDetected,
-    screenFacing: attention.screenFacing,
     thresholds: settings.thresholds,
     breakSettings: settings.breakSettings,
     eyeClosureSeconds: blinkState.eyeClosureSeconds,
@@ -348,9 +349,11 @@ export function processMonitoringFrame(
   const overlayProgress =
     derived.status === 'calibrating'
       ? calibrationUpdate.calibrationProgress
-      : derived.status === 'break-due' || derived.status === 'break-in-progress'
+      : derived.status === 'break-in-progress'
         ? breakUpdate.breakProgress
-        : derived.eyeStrainProgress
+        : derived.status === 'no-face' && breakUpdate.breakConfirmationProgress > 0
+          ? breakUpdate.breakConfirmationProgress
+          : derived.eyeStrainProgress
 
   const nextActiveSession = snapshot.activeSession
     ? {
@@ -409,6 +412,7 @@ export function processMonitoringFrame(
           timeSinceLastBlinkSeconds,
           settings.thresholds.blinkReminderSeconds,
           calibrationUpdate.calibrationProgress,
+          breakUpdate.breakConfirmationSeconds,
           breakUpdate.breakProgressSeconds,
           settings.breakSettings.durationSeconds,
           breakUpdate.workCycleElapsedSeconds,
@@ -419,4 +423,3 @@ export function processMonitoringFrame(
     } satisfies MonitoringSnapshot
   }
 }
-

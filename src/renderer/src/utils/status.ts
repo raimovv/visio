@@ -7,7 +7,6 @@ const statusLabels: Record<MonitoringStatus, string> = {
   calibrating: 'Calibrating',
   monitoring: 'Monitoring',
   'blink-reminder': 'Blink Reminder',
-  'looking-away': 'Looking Away',
   paused: 'Paused',
   'no-face': 'No Face Detected',
   'low-light': 'Low Light',

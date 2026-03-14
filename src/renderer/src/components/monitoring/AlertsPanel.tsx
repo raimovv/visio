@@ -18,10 +18,6 @@ function getAlertMessage(snapshot: MonitoringSnapshot) {
     return 'Break in progress. Keep your attention away from the screen until the 20-second timer completes.'
   }
 
-  if (snapshot.status === 'looking-away') {
-    return 'Attention is away from screen, so the eye-strain timer is paused.'
-  }
-
   if (snapshot.status === 'camera-error') {
     return 'Camera pipeline needs attention before monitoring can continue.'
   }

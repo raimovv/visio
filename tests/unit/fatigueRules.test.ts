@@ -14,7 +14,6 @@ describe('deriveMonitoringState', () => {
       deriveMonitoringState({
         brightnessScore: 0.8,
         faceDetected: false,
-        screenFacing: false,
         thresholds,
         breakSettings: { enabled: true, intervalMinutes: 20 },
         eyeClosureSeconds: 0,
@@ -32,7 +31,6 @@ describe('deriveMonitoringState', () => {
       deriveMonitoringState({
         brightnessScore: 0.7,
         faceDetected: true,
-        screenFacing: true,
         thresholds,
         breakSettings: { enabled: true, intervalMinutes: 20 },
         eyeClosureSeconds: 0,
@@ -45,30 +43,11 @@ describe('deriveMonitoringState', () => {
     ).toBe('calibration-needed')
   })
 
-  it('reports looking-away before blink reminders while attention is off-screen', () => {
-    expect(
-      deriveMonitoringState({
-        brightnessScore: 0.7,
-        faceDetected: true,
-        screenFacing: false,
-        thresholds,
-        breakSettings: { enabled: true, intervalMinutes: 20 },
-        eyeClosureSeconds: 0,
-        timeSinceLastBlinkSeconds: 9,
-        calibrationStatus: 'ready',
-        drowsinessWarningsEnabled: true,
-        workCycleElapsedSeconds: 240,
-        breakProgressSeconds: 0
-      }).status
-    ).toBe('looking-away')
-  })
-
   it('reports blink-reminder after a sustained open-eye streak', () => {
     expect(
       deriveMonitoringState({
         brightnessScore: 0.7,
         faceDetected: true,
-        screenFacing: true,
         thresholds,
         breakSettings: { enabled: true, intervalMinutes: 20 },
         eyeClosureSeconds: 0.2,
@@ -86,7 +65,6 @@ describe('deriveMonitoringState', () => {
       deriveMonitoringState({
         brightnessScore: 0.7,
         faceDetected: true,
-        screenFacing: true,
         thresholds,
         breakSettings: { enabled: true, intervalMinutes: 20 },
         eyeClosureSeconds: 3.7,
@@ -104,7 +82,6 @@ describe('deriveMonitoringState', () => {
       deriveMonitoringState({
         brightnessScore: 0.7,
         faceDetected: true,
-        screenFacing: true,
         thresholds,
         breakSettings: { enabled: true, intervalMinutes: 20 },
         eyeClosureSeconds: 0,
@@ -117,12 +94,11 @@ describe('deriveMonitoringState', () => {
     ).toBe('break-due')
   })
 
-  it('reports break-in-progress while the user stays away during a due break', () => {
+  it('reports break-in-progress once the no-face break countdown has started', () => {
     expect(
       deriveMonitoringState({
         brightnessScore: 0.7,
-        faceDetected: true,
-        screenFacing: false,
+        faceDetected: false,
         thresholds,
         breakSettings: { enabled: true, intervalMinutes: 20 },
         eyeClosureSeconds: 0,

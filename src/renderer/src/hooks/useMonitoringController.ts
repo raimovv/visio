@@ -345,7 +345,6 @@ export function useMonitoringController() {
     snapshot.status === 'calibrating' ||
     snapshot.status === 'monitoring' ||
     snapshot.status === 'blink-reminder' ||
-    snapshot.status === 'looking-away' ||
     snapshot.status === 'paused' ||
     snapshot.status === 'low-light' ||
     snapshot.status === 'no-face' ||
@@ -394,3 +393,6 @@ export function useMonitoringController() {
     calibration
   }
 }
+
+
+

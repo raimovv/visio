@@ -24,32 +24,24 @@ describe('updateBreakCycle', () => {
     expect(next.workCycleElapsedSeconds).toBe(1200)
   })
 
-  it('does not reset the work cycle for a partial away break', () => {
-    const start = updateBreakCycle({
-      state: { ...createBreakRuntimeState(), lastTimestamp: 0, workCycleElapsedMs: 20 * 60 * 1000, breakProgressMs: 0, completedBreaks: 0, breakTakenAt: [] },
-      timestamp: 10000,
+  it('waits 5 seconds of no-face time before starting the 20-second break countdown', () => {
+    const next = updateBreakCycle({
+      state: { ...createBreakRuntimeState(), lastTimestamp: 0, workCycleElapsedMs: 20 * 60 * 1000, breakConfirmMs: 0, breakProgressMs: 0, completedBreaks: 0, breakTakenAt: [] },
+      timestamp: 4000,
       settings,
       faceDetected: false,
       screenFacing: false
     })
 
-    const returned = updateBreakCycle({
-      state: start.state,
-      timestamp: 12000,
-      settings,
-      faceDetected: true,
-      screenFacing: true
-    })
-
-    expect(returned.due).toBe(true)
-    expect(returned.breakProgressSeconds).toBe(0)
-    expect(returned.workCycleElapsedSeconds).toBe(1200)
+    expect(next.breakConfirmationSeconds).toBe(4)
+    expect(next.breakProgressSeconds).toBe(0)
+    expect(next.inProgress).toBe(false)
   })
 
-  it('completes and logs a break after 20 continuous away seconds', () => {
+  it('completes and logs a break after 5 seconds confirm plus 20 seconds no-face countdown', () => {
     const next = updateBreakCycle({
-      state: { ...createBreakRuntimeState(), lastTimestamp: 0, workCycleElapsedMs: 20 * 60 * 1000, breakProgressMs: 0, completedBreaks: 0, breakTakenAt: [] },
-      timestamp: 20000,
+      state: { ...createBreakRuntimeState(), lastTimestamp: 0, workCycleElapsedMs: 20 * 60 * 1000, breakConfirmMs: 0, breakProgressMs: 0, completedBreaks: 0, breakTakenAt: [] },
+      timestamp: 25000,
       settings,
       faceDetected: false,
       screenFacing: false
