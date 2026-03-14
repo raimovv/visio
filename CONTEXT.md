@@ -9,7 +9,7 @@
 - Local branch was renamed from `master` to `main`.
 - Remote `main` had a one-line README bootstrap commit; that history was merged into local `main` and pushed.
 - `v1.0` tag is pushed to GitHub.
-- Active feature branch is `codex/robust-blink-202020`.
+- Feature work is committed on `codex/robust-blink-202020` at commit `6e96f26` and pushed to GitHub.
 
 ## Current Verified State
 - Electron + TypeScript + React + `electron-vite` scaffold is in place.
@@ -19,6 +19,7 @@
 - Real webcam stream preview works.
 - `npm run build` passes.
 - `npm test` passes.
+- `npm run lint` passes.
 
 ## Monitoring Refactor Completed
 - Blink detection is no longer EAR-only in practice.
@@ -61,8 +62,8 @@
   - left/right EAR values
 - Overlay progress now switches between blink-strain progress and break progress depending on state.
 - Break alerts now explicitly instruct a 20-20-20 eye break.
-- `PROGRAM_SUM.md` now preserves the original long-form build/spec document.
-- `README.md` was rewritten into a concise project-facing overview.
+- `PROGRAM_SUM.md` preserves the original long-form build/spec document.
+- `README.md` is now a concise project-facing overview.
 
 ## Tests Added / Updated
 - `tests/unit/blinkDetector.test.ts`
@@ -77,7 +78,6 @@
 - Confirm looking at the keyboard or sideways pauses blink reminders and work-cycle accumulation as intended.
 - Confirm a full 20-second away break is counted and resets the work-cycle timer in the dashboard and overlay.
 - Confirm overlay hide/show, overlay click-to-open, and drag behavior still feel correct.
-- Run `npm run lint` after the refactor and address any style/type warnings.
 - Package and test a Windows `.exe` build in a later packaging pass.
 
 ## Important Notes
