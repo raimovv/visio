@@ -3,3 +3,6 @@ dist
 out
 coverage
 *.log
+release
+CONTEXT.md
+RECENT_ERROR.md

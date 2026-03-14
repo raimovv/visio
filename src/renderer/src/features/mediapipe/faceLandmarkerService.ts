@@ -4,8 +4,6 @@ import { calculateEyeAspectRatio } from '@renderer/features/monitoring/ear'
 
 const LEFT_EYE_INDICES = [33, 160, 158, 133, 153, 144] as const
 const RIGHT_EYE_INDICES = [362, 385, 387, 263, 373, 380] as const
-const WASM_ROOT = '/mediapipe'
-const MODEL_PATH = '/models/face_landmarker.task'
 const EMPTY_EYE_SIGNALS: EyeBlendshapeSignals = {
   blinkLeft: 0,
   blinkRight: 0,
@@ -15,6 +13,16 @@ const EMPTY_EYE_SIGNALS: EyeBlendshapeSignals = {
   lookInRight: 0,
   lookOutLeft: 0,
   lookOutRight: 0
+}
+
+function resolveRendererAssetPath(relativePath: string) {
+  const normalizedPath = relativePath.replace(/^\/+/, '')
+
+  if (window.location.protocol === 'file:') {
+    return new URL(`./${normalizedPath}`, window.location.href).toString()
+  }
+
+  return `/${normalizedPath}`
 }
 
 function projectEye(
@@ -105,10 +113,10 @@ function deriveHeadPose(matrix: { rows: number; columns: number; data: number[] 
 }
 
 export async function createFaceLandmarker(): Promise<FaceLandmarkerRunner> {
-  const vision = await FilesetResolver.forVisionTasks(WASM_ROOT)
+  const vision = await FilesetResolver.forVisionTasks(resolveRendererAssetPath('mediapipe'))
   const faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
     baseOptions: {
-      modelAssetPath: MODEL_PATH
+      modelAssetPath: resolveRendererAssetPath('models/face_landmarker.task')
     },
     runningMode: 'VIDEO',
     numFaces: 1,

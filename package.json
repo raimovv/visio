@@ -1,6 +1,6 @@
 {
   "name": "visio",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "description": "Desktop fatigue monitoring app built with Electron, React, and TypeScript.",
   "main": "./out/main/index.js",
   "author": "Codex",
@@ -8,10 +8,53 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
+    "dist:win": "npm run build && electron-builder --win nsis portable",
     "preview": "electron-vite preview",
     "test": "vitest run",
-    "lint": "eslint . --ext .ts,.tsx",
+    "lint": "eslint . --ext .ts,.tsx --ignore-pattern out/** --ignore-pattern release/**",
     "format": "prettier --write ."
+  },
+  "build": {
+    "appId": "com.raimovv.visio",
+    "productName": "Visio",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "out/renderer/mediapipe/**/*",
+      "out/renderer/models/**/*"
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}-${arch}.${ext}"
+    }
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^0.10.18",
@@ -45,3 +88,5 @@
     "vitest": "^3.0.9"
   }
 }
+
+

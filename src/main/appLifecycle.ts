@@ -51,7 +51,7 @@ export async function bootstrapApp() {
     await overlay.loadURL(`${process.env.ELECTRON_RENDERER_URL}#/overlay`)
   } else {
     await dashboard.loadFile(rendererEntry)
-    await overlay.loadFile(rendererEntry, { hash: 'overlay' })
+    await overlay.loadFile(rendererEntry, { hash: '/overlay' })
   }
 
   createTray({
